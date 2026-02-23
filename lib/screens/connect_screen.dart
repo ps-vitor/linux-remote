@@ -86,11 +86,12 @@ class _ConnectScreenState extends State<ConnectScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Linux Remote')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
             const Icon(Icons.computer, size: 64, color: Colors.blueGrey),
             const SizedBox(height: 24),
             TextField(
@@ -154,7 +155,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
                 label: Text(_connecting ? 'Conectando...' : 'Conectar'),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

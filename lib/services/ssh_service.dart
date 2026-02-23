@@ -98,11 +98,20 @@ class SshService {
   Future<Uint8List?> captureScreen() async {
     if (_client == null || !_connected) return null;
     try {
-      // Use grim (Wayland) or scrot/import (X11) to capture to stdout
+      // Set up environment for both Wayland and X11, then capture
       final session = await _client!.execute(
+        'export XDG_RUNTIME_DIR=/run/user/\$(id -u); '
+        'export WAYLAND_DISPLAY=\$(ls \$XDG_RUNTIME_DIR/wayland-* 2>/dev/null | grep -v lock | grep -v sock | head -1 | xargs basename 2>/dev/null); '
         'export DISPLAY=:0; '
-        '(grim -t jpeg -q 50 - 2>/dev/null || '
-        'scrot -o /tmp/.linux_remote_cap.jpg && cat /tmp/.linux_remote_cap.jpg)',
+        'if command -v grim >/dev/null 2>&1 && [ -n "\$WAYLAND_DISPLAY" ]; then '
+        '  grim -t jpeg -q 50 -; '
+        'elif command -v scrot >/dev/null 2>&1; then '
+        '  scrot -o /tmp/.linux_remote_cap.jpg && cat /tmp/.linux_remote_cap.jpg; '
+        'elif command -v spectacle >/dev/null 2>&1; then '
+        '  spectacle -b -n -o /tmp/.linux_remote_cap.jpg 2>/dev/null && cat /tmp/.linux_remote_cap.jpg; '
+        'elif command -v ffmpeg >/dev/null 2>&1; then '
+        '  ffmpeg -y -f x11grab -video_size 1920x1080 -i :0 -frames:v 1 -q:v 5 /tmp/.linux_remote_cap.jpg 2>/dev/null && cat /tmp/.linux_remote_cap.jpg; '
+        'fi',
       );
       final chunks = <int>[];
       await session.stdout.forEach((data) => chunks.addAll(data));

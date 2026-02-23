@@ -16,14 +16,13 @@ class _RemoteScreenState extends State<RemoteScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Uint8List? _screenshot;
-  Timer? _screenTimer;
   bool _mirroring = false;
   String _volume = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _fetchVolume();
   }
 
@@ -47,7 +46,6 @@ class _RemoteScreenState extends State<RemoteScreen>
 
   void _toggleMirror() {
     if (_mirroring) {
-      _screenTimer?.cancel();
       setState(() {
         _mirroring = false;
         _screenshot = null;
@@ -106,7 +104,6 @@ class _RemoteScreenState extends State<RemoteScreen>
 
   @override
   void dispose() {
-    _screenTimer?.cancel();
     _mirroring = false;
     _tabController.dispose();
     widget.ssh.disconnect();
@@ -129,7 +126,6 @@ class _RemoteScreenState extends State<RemoteScreen>
           controller: _tabController,
           tabs: const [
             Tab(icon: Icon(Icons.gamepad), text: 'Controle'),
-            Tab(icon: Icon(Icons.volume_up), text: 'Mídia'),
             Tab(icon: Icon(Icons.screen_share), text: 'Tela'),
             Tab(icon: Icon(Icons.terminal), text: 'Terminal'),
           ],
@@ -139,7 +135,6 @@ class _RemoteScreenState extends State<RemoteScreen>
         controller: _tabController,
         children: [
           _buildControlTab(),
-          _buildMediaTab(),
           _buildScreenTab(),
           TerminalScreen(ssh: widget.ssh),
         ],
@@ -149,118 +144,121 @@ class _RemoteScreenState extends State<RemoteScreen>
 
   Widget _buildControlTab() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Arrow keys
-          _arrowButton(Icons.keyboard_arrow_up, widget.ssh.arrowUp),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _arrowButton(Icons.keyboard_arrow_left, widget.ssh.arrowLeft),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: SizedBox(
-                  width: 64,
-                  height: 64,
-                  child: ElevatedButton(
-                    onPressed: () => _exec(widget.ssh.enter),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+          // Main area: arrows+super+power on the left, volume on the right
+          Expanded(
+            child: Row(
+              children: [
+                // Left side: arrow keys + super/power
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _arrowButton(Icons.keyboard_arrow_up, widget.ssh.arrowUp),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _arrowButton(Icons.keyboard_arrow_left, widget.ssh.arrowLeft),
+                          Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: SizedBox(
+                              width: 56,
+                              height: 56,
+                              child: ElevatedButton(
+                                onPressed: () => _exec(widget.ssh.enter),
+                                style: ElevatedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text('OK', style: TextStyle(fontSize: 14)),
+                              ),
+                            ),
+                          ),
+                          _arrowButton(Icons.keyboard_arrow_right, widget.ssh.arrowRight),
+                        ],
                       ),
+                      _arrowButton(Icons.keyboard_arrow_down, widget.ssh.arrowDown),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _actionButton(
+                            Icons.window,
+                            'Super',
+                            () => _exec(widget.ssh.superKey),
+                          ),
+                          const SizedBox(width: 16),
+                          _actionButton(
+                            Icons.power_settings_new,
+                            'Energia',
+                            _confirmShutdown,
+                            color: Colors.red,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Right side: volume controls (vertical)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _actionButton(Icons.volume_up, 'Vol +', () async {
+                        await _exec(widget.ssh.volumeUp);
+                        _fetchVolume();
+                      }),
+                      const SizedBox(height: 8),
+                      Text(
+                        _volume.isNotEmpty ? _volume : '--',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      _actionButton(Icons.volume_off, 'Mudo', () async {
+                        await _exec(widget.ssh.toggleMute);
+                        _fetchVolume();
+                      }),
+                      const SizedBox(height: 8),
+                      _actionButton(Icons.volume_down, 'Vol -', () async {
+                        await _exec(widget.ssh.volumeDown);
+                        _fetchVolume();
+                      }),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Bottom: playback controls
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _actionButton(Icons.skip_previous, 'Anterior',
+                    () => _exec(widget.ssh.prevTrack)),
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: ElevatedButton(
+                    onPressed: () => _exec(widget.ssh.playPause),
+                    style: ElevatedButton.styleFrom(
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(14),
                     ),
-                    child: const Text('OK', style: TextStyle(fontSize: 16)),
+                    child: const Icon(Icons.play_arrow, size: 32),
                   ),
                 ),
-              ),
-              _arrowButton(Icons.keyboard_arrow_right, widget.ssh.arrowRight),
-            ],
-          ),
-          _arrowButton(Icons.keyboard_arrow_down, widget.ssh.arrowDown),
-          const SizedBox(height: 32),
-          // Super key & Shutdown
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _actionButton(
-                Icons.window,
-                'Super',
-                () => _exec(widget.ssh.superKey),
-              ),
-              _actionButton(
-                Icons.power_settings_new,
-                'Energia',
-                _confirmShutdown,
-                color: Colors.red,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMediaTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Volume
-          const Icon(Icons.volume_up, size: 48, color: Colors.blueGrey),
-          const SizedBox(height: 8),
-          Text(
-            _volume.isNotEmpty ? _volume : '--',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _actionButton(Icons.volume_down, 'Vol -', () async {
-                await _exec(widget.ssh.volumeDown);
-                _fetchVolume();
-              }),
-              const SizedBox(width: 16),
-              _actionButton(Icons.volume_off, 'Mudo', () async {
-                await _exec(widget.ssh.toggleMute);
-                _fetchVolume();
-              }),
-              const SizedBox(width: 16),
-              _actionButton(Icons.volume_up, 'Vol +', () async {
-                await _exec(widget.ssh.volumeUp);
-                _fetchVolume();
-              }),
-            ],
-          ),
-          const SizedBox(height: 40),
-          // Playback
-          const Icon(Icons.music_note, size: 48, color: Colors.blueGrey),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _actionButton(Icons.skip_previous, 'Anterior',
-                  () => _exec(widget.ssh.prevTrack)),
-              const SizedBox(width: 16),
-              SizedBox(
-                width: 80,
-                height: 80,
-                child: ElevatedButton(
-                  onPressed: () => _exec(widget.ssh.playPause),
-                  style: ElevatedButton.styleFrom(
-                    shape: const CircleBorder(),
-                    padding: const EdgeInsets.all(16),
-                  ),
-                  child: const Icon(Icons.play_arrow, size: 36),
-                ),
-              ),
-              const SizedBox(width: 16),
-              _actionButton(Icons.skip_next, 'Próxima',
-                  () => _exec(widget.ssh.nextTrack)),
-            ],
+                const SizedBox(width: 16),
+                _actionButton(Icons.skip_next, 'Próxima',
+                    () => _exec(widget.ssh.nextTrack)),
+              ],
+            ),
           ),
         ],
       ),
@@ -309,10 +307,10 @@ class _RemoteScreenState extends State<RemoteScreen>
 
   Widget _arrowButton(IconData icon, Future<void> Function() action) {
     return Padding(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       child: SizedBox(
-        width: 64,
-        height: 64,
+        width: 56,
+        height: 56,
         child: ElevatedButton(
           onPressed: () => _exec(action),
           style: ElevatedButton.styleFrom(
@@ -321,7 +319,7 @@ class _RemoteScreenState extends State<RemoteScreen>
             ),
             padding: EdgeInsets.zero,
           ),
-          child: Icon(icon, size: 32),
+          child: Icon(icon, size: 30),
         ),
       ),
     );
@@ -333,8 +331,8 @@ class _RemoteScreenState extends State<RemoteScreen>
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 64,
-          height: 64,
+          width: 56,
+          height: 56,
           child: ElevatedButton(
             onPressed: onPressed,
             style: ElevatedButton.styleFrom(
@@ -344,11 +342,11 @@ class _RemoteScreenState extends State<RemoteScreen>
               padding: EdgeInsets.zero,
               backgroundColor: color,
             ),
-            child: Icon(icon, size: 28),
+            child: Icon(icon, size: 26),
           ),
         ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12)),
+        Text(label, style: const TextStyle(fontSize: 11)),
       ],
     );
   }
