@@ -29,6 +29,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     _hostController.text = prefs.getString('ssh_host') ?? '';
     _portController.text = prefs.getString('ssh_port') ?? '22';
     _userController.text = prefs.getString('ssh_user') ?? '';
+    _passController.text = prefs.getString('ssh_pass') ?? '';
   }
 
   Future<void> _save() async {
@@ -36,6 +37,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     await prefs.setString('ssh_host', _hostController.text);
     await prefs.setString('ssh_port', _portController.text);
     await prefs.setString('ssh_user', _userController.text);
+    await prefs.setString('ssh_pass', _passController.text);
   }
 
   Future<void> _connect() async {
