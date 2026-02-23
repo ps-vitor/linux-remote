@@ -54,10 +54,10 @@ class SshService {
   Future<String> getNowPlaying() => runCommand(
       'playerctl metadata --format "{{ artist }} - {{ title }}" 2>/dev/null || echo ""');
 
-  // Media controls (via xdotool)
-  Future<void> playPause() => _sendKey('XF86AudioPlay');
-  Future<void> nextTrack() => _sendKey('XF86AudioNext');
-  Future<void> prevTrack() => _sendKey('XF86AudioPrev');
+  // Media controls (via playerctl, works on both X11 and Wayland)
+  Future<void> playPause() => runCommand('playerctl play-pause');
+  Future<void> nextTrack() => runCommand('playerctl next');
+  Future<void> prevTrack() => runCommand('playerctl previous');
 
   // Arrow keys
   Future<void> arrowUp() => _sendKey('Up');
