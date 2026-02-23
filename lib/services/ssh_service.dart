@@ -50,6 +50,10 @@ class SshService {
   Future<String> getVolume() => runCommand(
       "pactl get-sink-volume @DEFAULT_SINK@ | grep -oP '\\d+%' | head -1");
 
+  // Now playing info (via playerctl)
+  Future<String> getNowPlaying() => runCommand(
+      'playerctl metadata --format "{{ artist }} - {{ title }}" 2>/dev/null || echo ""');
+
   // Media controls (via xdotool)
   Future<void> playPause() => _sendKey('XF86AudioPlay');
   Future<void> nextTrack() => _sendKey('XF86AudioNext');
