@@ -114,6 +114,20 @@ class SshService {
     }
   }
 
+  // Interactive shell session for terminal use
+  Future<SSHSession> openShell() async {
+    if (_client == null || !_connected) {
+      throw Exception('Not connected');
+    }
+    final shell = await _client!.shell(
+      pty: SSHPtyConfig(
+        width: 80,
+        height: 24,
+      ),
+    );
+    return shell;
+  }
+
   void disconnect() {
     _client?.close();
     _client = null;

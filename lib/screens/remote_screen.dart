@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../services/ssh_service.dart';
+import 'terminal_screen.dart';
 
 class RemoteScreen extends StatefulWidget {
   final SshService ssh;
@@ -22,7 +23,7 @@ class _RemoteScreenState extends State<RemoteScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _fetchVolume();
   }
 
@@ -130,6 +131,7 @@ class _RemoteScreenState extends State<RemoteScreen>
             Tab(icon: Icon(Icons.gamepad), text: 'Controle'),
             Tab(icon: Icon(Icons.volume_up), text: 'Mídia'),
             Tab(icon: Icon(Icons.screen_share), text: 'Tela'),
+            Tab(icon: Icon(Icons.terminal), text: 'Terminal'),
           ],
         ),
       ),
@@ -139,6 +141,7 @@ class _RemoteScreenState extends State<RemoteScreen>
           _buildControlTab(),
           _buildMediaTab(),
           _buildScreenTab(),
+          TerminalScreen(ssh: widget.ssh),
         ],
       ),
     );
